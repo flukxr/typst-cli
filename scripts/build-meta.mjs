@@ -41,7 +41,7 @@ async function main() {
     keywords: ["typst", "cli", "compiler", "typesetting"],
     main: "index.cjs",
     bin: { typst: "bin/typst.cjs" },
-    files: ["bin", "index.cjs", "README.md", "LICENSE"],
+    files: ["bin", "index.cjs", "update-policy.cjs", "README.md", "LICENSE"],
     engines: { node: ">=18" },
     optionalDependencies,
     publishConfig: { access: "public" }
@@ -54,6 +54,10 @@ async function main() {
 
   await fs.writeFile(path.join(packageDir, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
   await fs.copyFile(path.join(ROOT, "packages", "cli", "index.cjs"), path.join(packageDir, "index.cjs"));
+  await fs.copyFile(
+    path.join(ROOT, "packages", "cli", "update-policy.cjs"),
+    path.join(packageDir, "update-policy.cjs")
+  );
   await fs.copyFile(path.join(ROOT, "packages", "cli", "bin", "typst.cjs"), path.join(packageDir, "bin", "typst.cjs"));
   await fs.copyFile(path.join(ROOT, "packages", "cli", "README.md"), path.join(packageDir, "README.md"));
   await fs.copyFile(path.join(ROOT, "LICENSE"), path.join(packageDir, "LICENSE"));

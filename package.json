@@ -10,6 +10,6 @@
     "build:platform": "node scripts/build-platform.mjs",
     "build:meta": "node scripts/build-meta.mjs",
     "test": "node --test",
-    "check": "node --check scripts/build-platform.mjs && node --check scripts/build-meta.mjs && node --check scripts/check-latest-release.mjs && node --check scripts/release-plan.mjs && node --check scripts/target-build-plan.mjs && node --check scripts/lib/args.mjs && node --check scripts/lib/fs-utils.mjs && node --check scripts/lib/github.mjs && node --check scripts/lib/historical-targets.mjs && node --check scripts/lib/package-version.mjs && node --check scripts/lib/process.mjs && node --check scripts/lib/release-watcher.mjs && node --check scripts/lib/targets.mjs && node --check packages/cli/index.cjs && node --check packages/cli/bin/typst.cjs"
+    "check": "node --check scripts/build-platform.mjs && node --check scripts/build-meta.mjs && node --check scripts/check-latest-release.mjs && node --check scripts/release-plan.mjs && node --check scripts/target-build-plan.mjs && node --check scripts/lib/args.mjs && node --check scripts/lib/fs-utils.mjs && node --check scripts/lib/github.mjs && node --check scripts/lib/historical-targets.mjs && node --check scripts/lib/package-version.mjs && node --check scripts/lib/process.mjs && node --check scripts/lib/release-watcher.mjs && node --check scripts/lib/targets.mjs && node --check packages/cli/index.cjs && node --check packages/cli/update-policy.cjs && node --check packages/cli/bin/typst.cjs"
   }
 }

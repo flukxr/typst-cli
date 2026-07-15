@@ -79,6 +79,16 @@ Install a specific Typst version with:
 npm install --save-dev @flukxr/typst-cli@0.15.0-npm.0
 ```
 
+Use npm to update the CLI:
+
+```sh
+npm install --save-dev @flukxr/typst-cli@latest
+```
+
+The native `typst update` command is blocked by the launcher because it would
+replace the executable inside `node_modules` without updating `package.json` or
+the lockfile. `typst update --help` remains available.
+
 ## Programmatic API
 
 `typstPath` is the absolute path to the selected native executable. `version`

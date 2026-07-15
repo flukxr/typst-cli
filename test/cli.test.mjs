@@ -4,6 +4,7 @@ import test from "node:test";
 
 const require = createRequire(import.meta.url);
 const cli = require("../packages/cli/index.cjs");
+const { isSelfUpdate, selfUpdateMessage } = require("../packages/cli/update-policy.cjs");
 
 const expected = {
   "win32-x64": "@flukxr/typst-cli-win32-x64",
@@ -33,4 +34,21 @@ test("explains when an optional platform package is absent", () => {
     () => cli.loadPlatformPackage("linux", "arm64"),
     /optional dependencies are enabled/
   );
+});
+
+test("intercepts native self-update commands", () => {
+  assert.equal(isSelfUpdate(["update"]), true);
+  assert.equal(isSelfUpdate(["update", "0.16.0", "--force"]), true);
+});
+
+test("keeps update help available", () => {
+  assert.equal(isSelfUpdate(["update", "--help"]), false);
+  assert.equal(isSelfUpdate(["update", "-h"]), false);
+  assert.equal(isSelfUpdate(["help", "update"]), false);
+});
+
+test("self-update message directs users back to npm", () => {
+  const message = selfUpdateMessage();
+  assert.match(message, /npm install --save-dev @flukxr\/typst-cli@latest/);
+  assert.match(message, /npm install --global @flukxr\/typst-cli@latest/);
 });

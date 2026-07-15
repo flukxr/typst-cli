@@ -57,6 +57,15 @@ Versions follow `<typst-version>-npm.<packaging-revision>`. For example,
 `0.15.0-npm.0` contains Typst 0.15.0. The npm revision changes only when the
 packaging needs an update; it does not indicate a Typst prerelease.
 
+Update through npm so the package manifest and lockfile stay in sync:
+
+```sh
+npm install --save-dev @flukxr/typst-cli@latest
+```
+
+The native `typst update` command is blocked because it would modify the
+executable inside `node_modules` outside npm's package management.
+
 ## Programmatic API
 
 `typstPath` is the absolute path to the selected native executable. `version`
