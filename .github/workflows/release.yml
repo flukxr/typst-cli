@@ -1,4 +1,4 @@
-name: Build npm packages
+name: Build and publish npm packages
 
 on:
   workflow_dispatch:
@@ -13,6 +13,14 @@ on:
         required: true
         default: "0"
         type: string
+      launcher_tag:
+        description: npm dist-tag for the launcher package
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - legacy
 
 concurrency:
   group: npm-build-${{ inputs.typst_version }}-${{ inputs.revision }}
@@ -138,3 +146,80 @@ jobs:
           path: npm-packages/*.tgz
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: Publish to npm
+    needs: collect
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install OIDC-compatible npm
+        run: npm install --global npm@11.12.1
+
+      - name: Download complete package set
+        uses: actions/download-artifact@v8
+        with:
+          name: npm-packages-${{ inputs.typst_version }}-npm.${{ inputs.revision }}
+          path: npm-packages
+
+      - name: Publish platform packages, then launcher
+        shell: bash
+        env:
+          PACKAGE_VERSION: ${{ inputs.typst_version }}-npm.${{ inputs.revision }}
+          LAUNCHER_TAG: ${{ inputs.launcher_tag }}
+        run: |
+          set -euo pipefail
+
+          publish_if_missing() {
+            local package_name="$1"
+            local tarball="$2"
+            local tag="$3"
+
+            test -f "$tarball"
+
+            if npm view "${package_name}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+              echo "${package_name}@${PACKAGE_VERSION} is already published; skipping"
+              return
+            fi
+
+            npm publish "$tarball" --access public --tag "$tag"
+          }
+
+          publish_if_missing \
+            "@flukxr/typst-cli-win32-x64" \
+            "npm-packages/flukxr-typst-cli-win32-x64-${PACKAGE_VERSION}.tgz" \
+            "platform"
+          publish_if_missing \
+            "@flukxr/typst-cli-win32-arm64" \
+            "npm-packages/flukxr-typst-cli-win32-arm64-${PACKAGE_VERSION}.tgz" \
+            "platform"
+          publish_if_missing \
+            "@flukxr/typst-cli-linux-x64" \
+            "npm-packages/flukxr-typst-cli-linux-x64-${PACKAGE_VERSION}.tgz" \
+            "platform"
+          publish_if_missing \
+            "@flukxr/typst-cli-linux-arm64" \
+            "npm-packages/flukxr-typst-cli-linux-arm64-${PACKAGE_VERSION}.tgz" \
+            "platform"
+          publish_if_missing \
+            "@flukxr/typst-cli-darwin-x64" \
+            "npm-packages/flukxr-typst-cli-darwin-x64-${PACKAGE_VERSION}.tgz" \
+            "platform"
+          publish_if_missing \
+            "@flukxr/typst-cli-darwin-arm64" \
+            "npm-packages/flukxr-typst-cli-darwin-arm64-${PACKAGE_VERSION}.tgz" \
+            "platform"
+
+          publish_if_missing \
+            "@flukxr/typst-cli" \
+            "npm-packages/flukxr-typst-cli-${PACKAGE_VERSION}.tgz" \
+            "$LAUNCHER_TAG"
