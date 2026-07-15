@@ -6,12 +6,14 @@ import { downloadText, getRelease } from "./lib/github.mjs";
 import { download, findFile, resetDir, sha256 } from "./lib/fs-utils.mjs";
 import { npmCommand, run } from "./lib/process.mjs";
 import { currentTarget, resolveTarget } from "./lib/targets.mjs";
+import { normalizeRevision, packageVersion } from "./lib/package-version.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const requestedVersion = normalizeVersion(args.version ?? "latest");
+  const requestedVersion = normalizeVersion(args["typst-version"] ?? args.version ?? "latest");
+  const revision = normalizeRevision(args.revision ?? "0");
   const target = resolveTarget(args.target ?? currentTarget());
 
   if (target.os !== process.platform) {
@@ -19,6 +21,7 @@ async function main() {
   }
 
   const release = await getRelease(requestedVersion);
+  const npmVersion = packageVersion(release.version, revision);
   const asset = release.assets.find(item => item.name === target.assetName);
   if (!asset) {
     throw new Error(`${release.tag} does not contain ${target.assetName}`);
@@ -27,7 +30,7 @@ async function main() {
     throw new Error(`GitHub did not provide a SHA-256 digest for ${asset.name}`);
   }
 
-  const workDir = path.join(ROOT, ".work", `${release.version}-${target.id}`);
+  const workDir = path.join(ROOT, ".work", `${npmVersion}-${target.id}`);
   const extractDir = path.join(workDir, "extract");
   const packageDir = path.join(workDir, "package");
   const vendorDir = path.join(packageDir, "vendor");
@@ -58,7 +61,7 @@ async function main() {
 
   const packageJson = {
     name: target.packageName,
-    version: release.version,
+    version: npmVersion,
     description: `Official Typst CLI binary for ${target.id}, distributed as an unofficial npm package`,
     license: "Apache-2.0",
     repository: {
@@ -72,9 +75,10 @@ async function main() {
     main: "index.cjs",
     files: ["vendor", "index.cjs", "README.md", "LICENSE-TYPST", "NOTICE-TYPST"],
     engines: { node: ">=18" },
-    publishConfig: { access: "public", provenance: true },
+    publishConfig: { access: "public" },
     typst: {
       version: release.version,
+      packageRevision: revision,
       release: release.htmlUrl,
       target: target.id,
       asset: asset.name,
@@ -108,7 +112,7 @@ async function main() {
 
   const npm = npmCommand(["pack", packageDir, "--pack-destination", artifactsDir]);
   await run(npm.command, npm.args, { cwd: ROOT });
-  console.log(`Built ${target.packageName}@${release.version}`);
+  console.log(`Built ${target.packageName}@${npmVersion} with Typst ${release.version}`);
 }
 
 async function extractArchive(archivePath, destination, extension) {

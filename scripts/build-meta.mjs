@@ -6,14 +6,17 @@ import { getRelease } from "./lib/github.mjs";
 import { resetDir } from "./lib/fs-utils.mjs";
 import { npmCommand, run } from "./lib/process.mjs";
 import { TARGETS } from "./lib/targets.mjs";
+import { normalizeRevision, packageVersion } from "./lib/package-version.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const requestedVersion = normalizeVersion(args.version ?? "latest");
+  const requestedVersion = normalizeVersion(args["typst-version"] ?? args.version ?? "latest");
+  const revision = normalizeRevision(args.revision ?? "0");
   const release = await getRelease(requestedVersion);
-  const packageDir = path.join(ROOT, ".work", `${release.version}-meta`, "package");
+  const npmVersion = packageVersion(release.version, revision);
+  const packageDir = path.join(ROOT, ".work", `${npmVersion}-meta`, "package");
   const artifactsDir = path.join(ROOT, "artifacts");
 
   await resetDir(packageDir);
@@ -21,11 +24,11 @@ async function main() {
   await fs.mkdir(artifactsDir, { recursive: true });
 
   const optionalDependencies = Object.fromEntries(
-    Object.keys(TARGETS).map(target => [`@flukxr/typst-cli-${target}`, release.version])
+    Object.keys(TARGETS).map(target => [`@flukxr/typst-cli-${target}`, npmVersion])
   );
   const packageJson = {
     name: "@flukxr/typst-cli",
-    version: release.version,
+    version: npmVersion,
     description: "Run the official Typst CLI through npm on Windows, Linux, and macOS",
     license: "MIT",
     repository: {
@@ -40,8 +43,9 @@ async function main() {
     files: ["bin", "index.cjs", "README.md", "LICENSE"],
     engines: { node: ">=18" },
     optionalDependencies,
-    publishConfig: { access: "public", provenance: true }
+    publishConfig: { access: "public" }
   };
+  packageJson.typst = { version: release.version, packageRevision: revision };
 
   await fs.writeFile(path.join(packageDir, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
   await fs.copyFile(path.join(ROOT, "packages", "cli", "index.cjs"), path.join(packageDir, "index.cjs"));
@@ -52,7 +56,7 @@ async function main() {
 
   const npm = npmCommand(["pack", packageDir, "--pack-destination", artifactsDir]);
   await run(npm.command, npm.args, { cwd: ROOT });
-  console.log(`Built @flukxr/typst-cli@${release.version}`);
+  console.log(`Built @flukxr/typst-cli@${npmVersion} with Typst ${release.version}`);
 }
 
 main().catch(error => {

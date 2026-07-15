@@ -6,3 +6,16 @@
 
 Do not commit downloaded Typst binaries or generated package tarballs. They are
 created by the release workflow from official upstream releases.
+
+## Commit messages
+
+Use Conventional Commits without quotes around the description:
+
+```text
+feat(cli): add platform selection
+fix(builder): verify release digest
+ci(release): collect package artifacts
+docs(readme): clarify installation
+```
+
+Use `feat`, `fix`, `docs`, `ci`, `test`, `refactor`, or `chore` as the type.

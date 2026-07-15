@@ -43,12 +43,16 @@ npm test
 npm run check
 ```
 
-Build the package for the current platform using the newest Typst release:
+Build revision `npm.0` for Typst 0.15.0 on the current platform:
 
 ```sh
-npm run build:platform -- --version latest
-npm run build:meta -- --version latest
+npm run build:platform -- --typst-version 0.15.0 --revision 0
+npm run build:meta -- --typst-version 0.15.0 --revision 0
 ```
+
+The resulting npm version is `0.15.0-npm.0`. The suffix is intentionally an
+npm packaging revision; internal platform dependencies always use exact
+versions.
 
 Generated tarballs are written to `artifacts/` and are intentionally ignored by
 Git.
