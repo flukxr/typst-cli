@@ -221,6 +221,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: collect
+    if: ${{ always() && needs.collect.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
