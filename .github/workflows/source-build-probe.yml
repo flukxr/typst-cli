@@ -1,0 +1,129 @@
+name: Probe historical source builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Typst ${{ matrix.version }} / ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: "0.11.1"
+            rust: "1.74"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.11.0"
+            rust: "1.74"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.10.0"
+            rust: "1.70"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.9.0"
+            rust: "1.70"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.8.0"
+            rust: "1.70"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.7.0"
+            rust: "1.70"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.6.0"
+            rust: "1.70"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.2.0"
+            rust: "1.68.2"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.2.0"
+            rust: "1.68.2"
+            target: aarch64-apple-darwin
+            runner: macos-15
+          - version: "0.2.0"
+            rust: "1.68.2"
+            target: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+          - version: "0.2.0"
+            rust: "1.68.2"
+            target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+          - version: "0.1.0"
+            rust: "1.68.2"
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - version: "0.1.0"
+            rust: "1.68.2"
+            target: aarch64-apple-darwin
+            runner: macos-15
+          - version: "0.1.0"
+            rust: "1.68.2"
+            target: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+          - version: "0.1.0"
+            rust: "1.68.2"
+            target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout official Typst source
+        uses: actions/checkout@v6
+        with:
+          repository: typst/typst
+          ref: v${{ matrix.version }}
+          persist-credentials: false
+
+      - name: Install musl toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes musl-tools
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        env:
+          RUST_VERSION: ${{ matrix.rust }}
+          TARGET: ${{ matrix.target }}
+        run: >-
+          rustup toolchain install "$RUST_VERSION"
+          --profile minimal
+          --target "$TARGET"
+
+      - name: Build and execute Typst
+        shell: bash
+        env:
+          RUST_VERSION: ${{ matrix.rust }}
+          TARGET: ${{ matrix.target }}
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          cargo "+$RUST_VERSION" build \
+            --locked \
+            --package typst-cli \
+            --release \
+            --target "$TARGET"
+
+          binary="target/$TARGET/release/typst"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            binary="$binary.exe"
+          fi
+
+          "$binary" --version
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$binary"
+          else
+            shasum -a 256 "$binary"
+          fi
