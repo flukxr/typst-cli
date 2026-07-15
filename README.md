@@ -11,7 +11,9 @@ npx typst compile main.typ
 
 This project is not affiliated with or endorsed by Typst GmbH. It downloads
 unchanged binaries from official Typst GitHub releases and verifies their
-SHA-256 digests using the values returned by GitHub's Releases API.
+SHA-256 digests when GitHub's Releases API provides them. For older releases
+without an upstream digest, the build records a SHA-256 computed immediately
+after downloading the asset from the official release.
 
 ## Packages
 

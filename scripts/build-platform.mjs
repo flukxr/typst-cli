@@ -26,8 +26,8 @@ async function main() {
   if (!asset) {
     throw new Error(`${release.tag} does not contain ${target.assetName}`);
   }
-  if (!asset.digest?.startsWith("sha256:")) {
-    throw new Error(`GitHub did not provide a SHA-256 digest for ${asset.name}`);
+  if (asset.digest && !asset.digest.startsWith("sha256:")) {
+    throw new Error(`GitHub provided an unsupported digest for ${asset.name}: ${asset.digest}`);
   }
 
   const workDir = path.join(ROOT, ".work", `${npmVersion}-${target.id}`);
@@ -45,11 +45,14 @@ async function main() {
   console.log(`Downloading ${asset.name} from ${release.tag}`);
   await download(asset.url, archivePath);
   const actualDigest = await sha256(archivePath);
-  const expectedDigest = asset.digest.slice("sha256:".length).toLowerCase();
-  if (actualDigest !== expectedDigest) {
+  const expectedDigest = asset.digest?.slice("sha256:".length).toLowerCase() ?? null;
+  if (expectedDigest && actualDigest !== expectedDigest) {
     throw new Error(`SHA-256 mismatch for ${asset.name}: expected ${expectedDigest}, received ${actualDigest}`);
   }
-  console.log(`Verified SHA-256 ${actualDigest}`);
+  const digestSource = expectedDigest ? "github-releases-api" : "computed-from-download";
+  console.log(expectedDigest
+    ? `Verified SHA-256 ${actualDigest}`
+    : `GitHub did not provide a digest; recorded computed SHA-256 ${actualDigest}`);
 
   await extractArchive(archivePath, extractDir, target.extension);
   const sourceBinary = await findFile(extractDir, target.executable);
@@ -82,7 +85,8 @@ async function main() {
       release: release.htmlUrl,
       target: target.id,
       asset: asset.name,
-      sha256: actualDigest
+      sha256: actualDigest,
+      sha256Source: digestSource
     }
   };
 
