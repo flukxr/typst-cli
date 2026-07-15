@@ -263,7 +263,25 @@ jobs:
               return
             fi
 
-            npm publish "./$tarball" --access public --tag "$tag"
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if npm publish "./$tarball" --access public --tag "$tag"; then
+                return
+              fi
+
+              if npm view "${package_name}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+                echo "${package_name}@${PACKAGE_VERSION} became available after a concurrent publish"
+                return
+              fi
+
+              if [[ "$attempt" -eq 5 ]]; then
+                echo "Failed to publish ${package_name}@${PACKAGE_VERSION} after ${attempt} attempts" >&2
+                return 1
+              fi
+
+              echo "Publish attempt ${attempt} failed; retrying after registry propagation"
+              sleep "$((attempt * 5))"
+            done
           }
 
           launcher="npm-packages/flukxr-typst-cli-${PACKAGE_VERSION}.tgz"
