@@ -117,6 +117,18 @@ Publishing. Publications made from the public repository include npm
 provenance. Native binaries are already contained in the platform packages;
 nothing is downloaded by an install script or when the CLI starts.
 
+## Automatic releases
+
+A scheduled GitHub Actions watcher checks the latest stable official Typst
+release every six hours. When `<typst-version>-npm.0` is not yet published, it
+dispatches the regular release workflow. Typst prereleases and drafts are
+ignored.
+
+The workflow publishes platform packages before the launcher. If a run is
+interrupted after a partial publication, a later check retries it and skips
+package versions that already exist. npm authentication uses short-lived OIDC
+credentials through Trusted Publishing; no long-lived npm token is stored.
+
 ## Local development
 
 Requires Node.js 20 or newer.

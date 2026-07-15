@@ -1,4 +1,5 @@
 name: Build and publish npm packages
+run-name: Typst ${{ inputs.typst_version }} npm.${{ inputs.revision }} (${{ inputs.launcher_tag }})
 
 on:
   workflow_dispatch:

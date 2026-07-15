@@ -1,0 +1,63 @@
+name: Watch Typst releases
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: typst-release-watcher
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  check:
+    name: Check latest stable release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Check upstream and npm
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/check-latest-release.mjs
+
+      - name: Dispatch release workflow
+        if: steps.release.outputs.should-dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: >-
+          gh workflow run release.yml
+          --repo "$GITHUB_REPOSITORY"
+          --ref "$DEFAULT_BRANCH"
+          -f typst_version="$VERSION"
+          -f revision=0
+          -f launcher_tag=latest
+
+      - name: Write summary
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PACKAGE_VERSION: ${{ steps.release.outputs.package-version }}
+          PUBLISHED: ${{ steps.release.outputs.published }}
+          ACTIVE: ${{ steps.release.outputs.active }}
+          DISPATCHED: ${{ steps.release.outputs.should-dispatch }}
+        run: |
+          echo "## Typst release watcher" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Upstream version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm version: \`$PACKAGE_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Already published: \`$PUBLISHED\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Release already active: \`$ACTIVE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dispatched release: \`$DISPATCHED\`" >> "$GITHUB_STEP_SUMMARY"
