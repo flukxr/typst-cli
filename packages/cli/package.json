@@ -1,0 +1,11 @@
+{
+  "name": "@flukxr/typst-cli",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Source template for the @flukxr/typst-cli npm package",
+  "license": "MIT",
+  "main": "index.cjs",
+  "bin": {
+    "typst": "bin/typst.cjs"
+  }
+}

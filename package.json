@@ -1,0 +1,15 @@
+{
+  "name": "typst-cli-monorepo",
+  "version": "0.0.0-development",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:platform": "node scripts/build-platform.mjs",
+    "build:meta": "node scripts/build-meta.mjs",
+    "test": "node --test",
+    "check": "node --check scripts/build-platform.mjs && node --check scripts/build-meta.mjs && node --check scripts/lib/args.mjs && node --check scripts/lib/fs-utils.mjs && node --check scripts/lib/github.mjs && node --check scripts/lib/process.mjs && node --check scripts/lib/targets.mjs && node --check packages/cli/index.cjs && node --check packages/cli/bin/typst.cjs"
+  }
+}

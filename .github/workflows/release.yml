@@ -1,0 +1,183 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Typst version without the v prefix
+        required: true
+        type: string
+
+concurrency:
+  group: npm-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-platform:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: win32-x64
+            runner: windows-latest
+          - target: win32-arm64
+            runner: windows-11-arm
+          - target: linux-x64
+            runner: ubuntu-latest
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+          - target: darwin-x64
+            runner: macos-15-intel
+          - target: darwin-arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build and test platform package
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: npm run build:platform -- --version "$VERSION" --target "$TARGET"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.target }}
+          path: artifacts/*.tgz
+          if-no-files-found: error
+
+  build-meta:
+    name: Build launcher package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build launcher package
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: npm run build:meta -- --version "$VERSION"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-meta
+          path: artifacts/*.tgz
+          if-no-files-found: error
+
+  publish-platform:
+    name: Publish ${{ matrix.target }}
+    needs: build-platform
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - win32-x64
+          - win32-arm64
+          - linux-x64
+          - linux-arm64
+          - darwin-x64
+          - darwin-arm64
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: package-${{ matrix.target }}
+          path: artifacts
+
+      - name: Enable npm trusted publishing support
+        run: npm install --global npm@11
+
+      - name: Publish when missing
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          PACKAGE="@flukxr/typst-cli-$TARGET"
+          if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
+            echo "$PACKAGE@$VERSION already exists; skipping"
+            exit 0
+          fi
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+          else
+            unset NODE_AUTH_TOKEN
+          fi
+          npm publish artifacts/*.tgz --access public --provenance
+
+  publish-meta:
+    name: Publish launcher
+    needs: [build-meta, publish-platform]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: package-meta
+          path: artifacts
+
+      - name: Enable npm trusted publishing support
+        run: npm install --global npm@11
+
+      - name: Publish when missing
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          PACKAGE="@flukxr/typst-cli"
+          if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
+            echo "$PACKAGE@$VERSION already exists; skipping"
+            exit 0
+          fi
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+          else
+            unset NODE_AUTH_TOKEN
+          fi
+          npm publish artifacts/*.tgz --access public --provenance
