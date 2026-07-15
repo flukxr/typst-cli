@@ -21,8 +21,10 @@ const { typstPath, version } = require("@flukxr/typst-cli");
 ```
 
 The matching binary package is installed as an optional dependency for Windows,
-Linux, or macOS on x64 or ARM64.
+Linux, or macOS on x64 or ARM64 when that Typst version supports the target.
 
-This is an unofficial npm distribution of unchanged binaries from official
-Typst GitHub releases. It is not affiliated with or endorsed by Typst GmbH.
-Typst itself is licensed under Apache-2.0.
+This is an unofficial npm distribution. It uses unchanged binaries from
+official Typst GitHub releases whenever available; selected historical targets
+are built from the corresponding official source tag with a pinned Rust
+toolchain. It is not affiliated with or endorsed by Typst GmbH. Typst itself is
+licensed under Apache-2.0.

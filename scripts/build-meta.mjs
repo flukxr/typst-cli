@@ -5,7 +5,7 @@ import { parseArgs, normalizeVersion } from "./lib/args.mjs";
 import { getRelease } from "./lib/github.mjs";
 import { resetDir } from "./lib/fs-utils.mjs";
 import { npmCommand, run } from "./lib/process.mjs";
-import { TARGETS } from "./lib/targets.mjs";
+import { supportedTargetsForVersion } from "./lib/historical-targets.mjs";
 import { normalizeRevision, packageVersion } from "./lib/package-version.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,8 +23,9 @@ async function main() {
   await fs.mkdir(path.join(packageDir, "bin"), { recursive: true });
   await fs.mkdir(artifactsDir, { recursive: true });
 
+  const supportedTargets = supportedTargetsForVersion(release.version);
   const optionalDependencies = Object.fromEntries(
-    Object.keys(TARGETS).map(target => [`@flukxr/typst-cli-${target}`, npmVersion])
+    supportedTargets.map(target => [`@flukxr/typst-cli-${target}`, npmVersion])
   );
   const packageJson = {
     name: "@flukxr/typst-cli",
@@ -45,7 +46,11 @@ async function main() {
     optionalDependencies,
     publishConfig: { access: "public" }
   };
-  packageJson.typst = { version: release.version, packageRevision: revision };
+  packageJson.typst = {
+    version: release.version,
+    packageRevision: revision,
+    supportedTargets
+  };
 
   await fs.writeFile(path.join(packageDir, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
   await fs.copyFile(path.join(ROOT, "packages", "cli", "index.cjs"), path.join(packageDir, "index.cjs"));

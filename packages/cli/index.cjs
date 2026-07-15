@@ -7,6 +7,9 @@ const TARGET_PACKAGES = Object.freeze({
   "darwin-arm64": "@flukxr/typst-cli-darwin-arm64"
 });
 
+const manifest = require("./package.json");
+const SUPPORTED_TARGETS = manifest.typst?.supportedTargets ?? Object.keys(TARGET_PACKAGES);
+
 function getPlatformPackageName(platform = process.platform, arch = process.arch) {
   const target = `${platform}-${arch}`;
   const packageName = TARGET_PACKAGES[target];
@@ -14,6 +17,12 @@ function getPlatformPackageName(platform = process.platform, arch = process.arch
     throw new Error(
       `@flukxr/typst-cli does not support ${target}. ` +
       `Supported targets: ${Object.keys(TARGET_PACKAGES).join(", ")}`
+    );
+  }
+  if (!SUPPORTED_TARGETS.includes(target)) {
+    throw new Error(
+      `Typst ${manifest.typst?.version ?? "this version"} is not available for ${target}. ` +
+      `Supported targets: ${SUPPORTED_TARGETS.join(", ")}`
     );
   }
   return packageName;

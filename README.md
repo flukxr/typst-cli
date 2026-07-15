@@ -9,11 +9,17 @@ npx typst --version
 npx typst compile main.typ
 ```
 
-This project is not affiliated with or endorsed by Typst GmbH. It downloads
-unchanged binaries from official Typst GitHub releases and verifies their
-SHA-256 digests when GitHub's Releases API provides them. For older releases
-without an upstream digest, the build records a SHA-256 computed immediately
-after downloading the asset from the official release.
+This project is not affiliated with or endorsed by Typst GmbH. It uses
+unchanged binaries from official Typst GitHub releases whenever they exist.
+Historical targets missing from a release are built from the corresponding
+official source tag with a pinned Rust toolchain; the package records the tag,
+commit, toolchain, and binary SHA-256. Typst 0.6.0 through 0.8.0 do not support
+Windows ARM64 because their pinned `ring` dependency cannot compile for that
+target.
+
+Downloaded release assets are verified against GitHub's SHA-256 digest when
+one is available. For older assets without an upstream digest, the build
+records a SHA-256 computed immediately after downloading the official asset.
 
 ## Packages
 

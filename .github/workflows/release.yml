@@ -30,24 +30,30 @@ permissions:
   contents: read
 
 jobs:
+  plan:
+    name: Plan release targets
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      package-count: ${{ steps.plan.outputs.package-count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Create target matrix
+        id: plan
+        env:
+          TYPST_VERSION: ${{ inputs.typst_version }}
+        run: >-
+          node scripts/release-plan.mjs
+          --typst-version "$TYPST_VERSION"
+
   build-platform:
     name: Build ${{ matrix.target }}
+    needs: plan
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - target: win32-x64
-            runner: windows-latest
-          - target: win32-arm64
-            runner: windows-11-arm
-          - target: linux-x64
-            runner: ubuntu-latest
-          - target: linux-arm64
-            runner: ubuntu-24.04-arm
-          - target: darwin-x64
-            runner: macos-15-intel
-          - target: darwin-arm64
-            runner: macos-15
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -63,6 +69,44 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Determine binary source
+        id: target-plan
+        shell: bash
+        env:
+          TYPST_VERSION: ${{ inputs.typst_version }}
+          TARGET: ${{ matrix.target }}
+        run: >-
+          node scripts/target-build-plan.mjs
+          --typst-version "$TYPST_VERSION"
+          --target "$TARGET"
+
+      - name: Checkout official Typst source
+        if: steps.target-plan.outputs.source-build == 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: typst/typst
+          ref: v${{ inputs.typst_version }}
+          path: .work/upstream
+          persist-credentials: false
+
+      - name: Install musl build tools
+        if: steps.target-plan.outputs.source-build == 'true' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes musl-tools
+
+      - name: Install pinned Rust toolchain
+        if: steps.target-plan.outputs.source-build == 'true'
+        shell: bash
+        env:
+          RUST_VERSION: ${{ steps.target-plan.outputs.rust-version }}
+          TARGET_TRIPLE: ${{ steps.target-plan.outputs.triple }}
+        run: >-
+          rustup toolchain install "$RUST_VERSION"
+          --profile minimal
+          --target "$TARGET_TRIPLE"
+
       - name: Build and test platform package
         shell: bash
         env:
@@ -70,6 +114,8 @@ jobs:
           TYPST_VERSION: ${{ inputs.typst_version }}
           REVISION: ${{ inputs.revision }}
           TARGET: ${{ matrix.target }}
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
         run: >-
           npm run build:platform --
           --typst-version "$TYPST_VERSION"
@@ -86,6 +132,7 @@ jobs:
 
   build-meta:
     name: Build launcher package
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -121,7 +168,7 @@ jobs:
 
   collect:
     name: Collect npm packages
-    needs: [build-platform, build-meta]
+    needs: [plan, build-platform, build-meta]
     runs-on: ubuntu-latest
     steps:
       - name: Download packages
@@ -133,10 +180,12 @@ jobs:
 
       - name: Verify package count
         shell: bash
+        env:
+          EXPECTED_PACKAGE_COUNT: ${{ needs.plan.outputs.package-count }}
         run: |
           set -euo pipefail
           count="$(find npm-packages -maxdepth 1 -name '*.tgz' -type f | wc -l)"
-          test "$count" -eq 7
+          test "$count" -eq "$EXPECTED_PACKAGE_COUNT"
           find npm-packages -maxdepth 1 -name '*.tgz' -type f -print | sort
 
       - name: Upload complete package set
@@ -194,32 +243,18 @@ jobs:
             npm publish "./$tarball" --access public --tag "$tag"
           }
 
-          publish_if_missing \
-            "@flukxr/typst-cli-win32-x64" \
-            "npm-packages/flukxr-typst-cli-win32-x64-${PACKAGE_VERSION}.tgz" \
-            "platform"
-          publish_if_missing \
-            "@flukxr/typst-cli-win32-arm64" \
-            "npm-packages/flukxr-typst-cli-win32-arm64-${PACKAGE_VERSION}.tgz" \
-            "platform"
-          publish_if_missing \
-            "@flukxr/typst-cli-linux-x64" \
-            "npm-packages/flukxr-typst-cli-linux-x64-${PACKAGE_VERSION}.tgz" \
-            "platform"
-          publish_if_missing \
-            "@flukxr/typst-cli-linux-arm64" \
-            "npm-packages/flukxr-typst-cli-linux-arm64-${PACKAGE_VERSION}.tgz" \
-            "platform"
-          publish_if_missing \
-            "@flukxr/typst-cli-darwin-x64" \
-            "npm-packages/flukxr-typst-cli-darwin-x64-${PACKAGE_VERSION}.tgz" \
-            "platform"
-          publish_if_missing \
-            "@flukxr/typst-cli-darwin-arm64" \
-            "npm-packages/flukxr-typst-cli-darwin-arm64-${PACKAGE_VERSION}.tgz" \
-            "platform"
+          launcher="npm-packages/flukxr-typst-cli-${PACKAGE_VERSION}.tgz"
+          test -f "$launcher"
+
+          while IFS= read -r tarball; do
+            [[ "$tarball" == "$launcher" ]] && continue
+            filename="${tarball##*/}"
+            package_stem="${filename%-${PACKAGE_VERSION}.tgz}"
+            package_name="@flukxr/${package_stem#flukxr-}"
+            publish_if_missing "$package_name" "$tarball" "platform"
+          done < <(find npm-packages -maxdepth 1 -name '*.tgz' -type f | sort)
 
           publish_if_missing \
             "@flukxr/typst-cli" \
-            "npm-packages/flukxr-typst-cli-${PACKAGE_VERSION}.tgz" \
+            "$launcher" \
             "$LAUNCHER_TAG"
