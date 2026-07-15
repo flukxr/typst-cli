@@ -14,6 +14,19 @@ on:
         required: true
         default: "0"
         type: string
+      release_scope:
+        description: Build all packages or only the launcher
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - launcher-only
+      platform_revision:
+        description: Existing platform revision used by launcher-only releases
+        required: false
+        default: ""
+        type: string
       launcher_tag:
         description: npm dist-tag for the launcher package
         required: true
@@ -52,6 +65,7 @@ jobs:
   build-platform:
     name: Build ${{ matrix.target }}
     needs: plan
+    if: inputs.release_scope == 'full'
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -154,10 +168,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           TYPST_VERSION: ${{ inputs.typst_version }}
           REVISION: ${{ inputs.revision }}
+          PLATFORM_REVISION: ${{ inputs.platform_revision || inputs.revision }}
         run: >-
           npm run build:meta --
           --typst-version "$TYPST_VERSION"
           --revision "$REVISION"
+          --platform-revision "$PLATFORM_REVISION"
 
       - name: Upload package
         uses: actions/upload-artifact@v7
@@ -170,6 +186,11 @@ jobs:
   collect:
     name: Collect npm packages
     needs: [plan, build-platform, build-meta]
+    if: >-
+      ${{ always() &&
+          needs.plan.result == 'success' &&
+          needs.build-meta.result == 'success' &&
+          (needs.build-platform.result == 'success' || needs.build-platform.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Download packages
@@ -182,7 +203,7 @@ jobs:
       - name: Verify package count
         shell: bash
         env:
-          EXPECTED_PACKAGE_COUNT: ${{ needs.plan.outputs.package-count }}
+          EXPECTED_PACKAGE_COUNT: ${{ inputs.release_scope == 'launcher-only' && 1 || needs.plan.outputs.package-count }}
         run: |
           set -euo pipefail
           count="$(find npm-packages -maxdepth 1 -name '*.tgz' -type f | wc -l)"

@@ -89,6 +89,14 @@ The native `typst update` command is blocked by the launcher because it would
 replace the executable inside `node_modules` without updating `package.json` or
 the lockfile. `typst update --help` remains available.
 
+To stay on a specific Typst release while accepting newer npm packaging fixes,
+use a semver range and run `npm update`:
+
+```sh
+npm install --save-dev "@flukxr/typst-cli@^0.14.2-npm.0"
+npm update @flukxr/typst-cli
+```
+
 ## Programmatic API
 
 `typstPath` is the absolute path to the selected native executable. `version`

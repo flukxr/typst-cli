@@ -14,8 +14,10 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const requestedVersion = normalizeVersion(args["typst-version"] ?? args.version ?? "latest");
   const revision = normalizeRevision(args.revision ?? "0");
+  const platformRevision = normalizeRevision(args["platform-revision"] ?? args.revision ?? "0");
   const release = await getRelease(requestedVersion);
   const npmVersion = packageVersion(release.version, revision);
+  const platformPackageVersion = packageVersion(release.version, platformRevision);
   const packageDir = path.join(ROOT, ".work", `${npmVersion}-meta`, "package");
   const artifactsDir = path.join(ROOT, "artifacts");
 
@@ -25,7 +27,7 @@ async function main() {
 
   const supportedTargets = supportedTargetsForVersion(release.version);
   const optionalDependencies = Object.fromEntries(
-    supportedTargets.map(target => [`@flukxr/typst-cli-${target}`, npmVersion])
+    supportedTargets.map(target => [`@flukxr/typst-cli-${target}`, platformPackageVersion])
   );
   const packageJson = {
     name: "@flukxr/typst-cli",
@@ -49,6 +51,7 @@ async function main() {
   packageJson.typst = {
     version: release.version,
     packageRevision: revision,
+    platformPackageRevision: platformRevision,
     supportedTargets
   };
 

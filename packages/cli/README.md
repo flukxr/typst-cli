@@ -66,6 +66,13 @@ npm install --save-dev @flukxr/typst-cli@latest
 The native `typst update` command is blocked because it would modify the
 executable inside `node_modules` outside npm's package management.
 
+To stay on one Typst release while receiving packaging fixes:
+
+```sh
+npm install --save-dev "@flukxr/typst-cli@^0.14.2-npm.0"
+npm update @flukxr/typst-cli
+```
+
 ## Programmatic API
 
 `typstPath` is the absolute path to the selected native executable. `version`
