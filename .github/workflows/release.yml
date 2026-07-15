@@ -191,7 +191,7 @@ jobs:
               return
             fi
 
-            npm publish "$tarball" --access public --tag "$tag"
+            npm publish "./$tarball" --access public --tag "$tag"
           }
 
           publish_if_missing \
