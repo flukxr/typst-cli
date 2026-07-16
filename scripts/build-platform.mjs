@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseArgs, normalizeVersion } from "./lib/args.mjs";
+import { extractArchive } from "./lib/archive.mjs";
 import { downloadText, getRelease } from "./lib/github.mjs";
 import { download, findFile, resetDir, sha256 } from "./lib/fs-utils.mjs";
 import { npmCommand, run } from "./lib/process.mjs";
@@ -165,22 +166,6 @@ async function main() {
   const npm = npmCommand(["pack", packageDir, "--pack-destination", artifactsDir]);
   await run(npm.command, npm.args, { cwd: ROOT });
   console.log(`Built ${target.packageName}@${npmVersion} with Typst ${release.version}`);
-}
-
-async function extractArchive(archivePath, destination, extension) {
-  if (extension === "zip") {
-    const source = archivePath.replaceAll("'", "''");
-    const target = destination.replaceAll("'", "''");
-    await run("powershell.exe", [
-      "-NoProfile",
-      "-NonInteractive",
-      "-Command",
-      `Expand-Archive -LiteralPath '${source}' -DestinationPath '${target}' -Force`
-    ]);
-    return;
-  }
-  const flag = extension === "tar.gz" ? "-xzf" : "-xJf";
-  await run("tar", [flag, archivePath, "-C", destination]);
 }
 
 async function writeUpstreamLegalFiles(tag, packageDir) {

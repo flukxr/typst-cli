@@ -57,6 +57,9 @@ Versions follow `<typst-version>-npm.<packaging-revision>`. For example,
 `0.15.0-npm.0` contains Typst 0.15.0. The npm revision changes only when the
 packaging needs an update; it does not indicate a Typst prerelease.
 
+Packaging-only changes are listed in the project
+[changelog](https://github.com/flukxr/typst-cli/blob/main/CHANGELOG.md).
+
 Update through npm so the package manifest and lockfile stay in sync:
 
 ```sh

@@ -73,6 +73,9 @@ revision of this npm distribution, not a Typst prerelease. The revision changes
 only when the packaging needs an update; platform dependencies always use exact
 versions.
 
+Packaging-only changes are recorded in the [changelog](CHANGELOG.md). Compiler
+changes are documented by the upstream Typst project.
+
 Install a specific Typst version with:
 
 ```sh

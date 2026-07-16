@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
+import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { createWriteStream } from "node:fs";
 
 export async function resetDir(directory) {
   await fs.rm(directory, { recursive: true, force: true });
@@ -24,8 +24,7 @@ export async function download(url, destination) {
 
 export async function sha256(filename) {
   const hash = createHash("sha256");
-  const data = await fs.readFile(filename);
-  hash.update(data);
+  await pipeline(createReadStream(filename), hash);
   return hash.digest("hex");
 }
 

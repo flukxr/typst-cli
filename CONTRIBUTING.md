@@ -7,6 +7,18 @@
 Do not commit downloaded Typst binaries or generated package tarballs. They are
 created by the release workflow from official upstream releases.
 
+## Releases
+
+The scheduled watcher publishes the first npm packaging revision of a new
+stable upstream release as `<typst-version>-npm.0`. It intentionally does not
+invent later packaging revisions.
+
+Use the `Build and publish npm packages` workflow manually for packaging-only
+changes. Choose `launcher-only` when native binaries are unchanged and set
+`platform_revision` to the existing platform package revision. Use `full` only
+when platform packages must also change. Record packaging changes in
+`CHANGELOG.md` before publishing.
+
 ## Commit messages
 
 Use Conventional Commits without quotes around the description:
