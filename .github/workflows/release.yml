@@ -259,7 +259,8 @@ jobs:
             test -f "$tarball"
 
             if npm view "${package_name}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-              echo "${package_name}@${PACKAGE_VERSION} is already published; skipping"
+              echo "${package_name}@${PACKAGE_VERSION} is already published; ensuring ${tag} dist-tag"
+              npm dist-tag add "${package_name}@${PACKAGE_VERSION}" "$tag"
               return
             fi
 
@@ -270,7 +271,8 @@ jobs:
               fi
 
               if npm view "${package_name}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-                echo "${package_name}@${PACKAGE_VERSION} became available after a concurrent publish"
+                echo "${package_name}@${PACKAGE_VERSION} became available after a concurrent publish; ensuring ${tag} dist-tag"
+                npm dist-tag add "${package_name}@${PACKAGE_VERSION}" "$tag"
                 return
               fi
 
@@ -292,7 +294,7 @@ jobs:
             filename="${tarball##*/}"
             package_stem="${filename%-${PACKAGE_VERSION}.tgz}"
             package_name="@flukxr/${package_stem#flukxr-}"
-            publish_if_missing "$package_name" "$tarball" "platform"
+            publish_if_missing "$package_name" "$tarball" "$LAUNCHER_TAG"
           done < <(find npm-packages -maxdepth 1 -name '*.tgz' -type f | sort)
 
           publish_if_missing \
